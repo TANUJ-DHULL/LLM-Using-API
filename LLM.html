@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My LLM Chatbot</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>  <!-- Custom Styles --!>
+        /* Use Inter font, Tailwind's default sans-serif */
+            body 
+         {
+            font-family: 'Inter', sans-serif;
+         }
+        /* Custom scrollbar for chat window */
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-600 */
+            border-radius: 3px;
+        }
+        /* Modal styles */
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .modal-content {
+            transition: transform 0.25s ease;
+        }
+        /* Spinner */
+        .spinner {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Loading spinner for speak button */
+        .speak-loader {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col h-full font-sans">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-md">
+        <div class="max-w-4xl mx-auto p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-bold">My LLM Interface</h1>
+            <div class="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
+                <!-- Persona Selector -->
+                <div class="flex items-center gap-2">
+                    <label for="persona-select" class="text-sm font-medium">Persona:</label>
+                    <select id="persona-select" class="bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Options will be added by JS -->
+                    </select>
+                </div>
+                <!-- Summarize Button -->
+                <button id="summarize-button" class="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-500 transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm font-medium">
+                    ✨ Summarize
+                </button>
+                <!-- Plan Trip Button -->
+                <button id="plan-trip-button" class="bg-teal-600 text-white px-3 py-2 rounded-lg hover:bg-teal-500 transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-sm font-medium">
+                    ✨ Plan a Trip
+                </button>
+                <!-- Generate Image Button -->
+                <button id="generate-image-button" class="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-500 transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm font-medium">
+                    ✨ Generate Image
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Area -->
+    <main class="flex-1 overflow-y-auto p-4">
+        <div id="chat-window" class="max-w-4xl mx-auto space-y-4 flex flex-col">
+            <!-- Initial Welcome Message -->
+        </div>
+    </main>
+
+    <!-- Message Input Footer -->
+    <footer class="bg-gray-800 p-4">
+        <div class="max-w-4xl mx-auto flex items-center gap-2">
+            <input 
+                type="text" 
+                id="prompt-input" 
+                placeholder="Type your message..." 
+                class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            >
+            <button 
+                id="send-button" 
+                class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-500 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send-horizontal">
+                    <path d="m3 3 3 9-3 9 19-9Z"/>
+                    <path d="M6 12h16"/>
+                </svg>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Trip Planner Modal -->
+    <div id="trip-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 opacity-0 pointer-events-none z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">✨ AI Trip Planner</h2>
+                <button class="close-modal-button text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <!-- Modal Form -->
+            <div id="trip-form">
+                <div class="mb-4">
+                    <label for="trip-destination" class="block text-sm font-medium mb-1">Destination</label>
+                    <input type="text" id="trip-destination" placeholder="e.g., Tokyo, Japan" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white">
+                </div>
+                <div class="mb-4">
+                    <label for="trip-days" class="block text-sm font-medium mb-1">Duration (days)</label>
+                    <input type="number" id="trip-days" value="3" min="1" max="10" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white">
+                </div>
+                <button id="submit-trip-button" class="w-full bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-500 transition">
+                    Generate Plan
+                </button>
+            </div>
+
+            <!-- Modal Results -->
+            <div id="trip-results-container" class="hidden">
+                <div id="trip-loading" class="flex flex-col items-center justify-center p-8">
+                    <div class="spinner w-12 h-12 rounded-full border-4 border-gray-600"></div>
+                    <p class="mt-4 text-gray-400">Generating your plan...</p>
+                </div>
+                <div id="trip-results-content" class="prose prose-invert max-w-none text-white overflow-y-auto max-h-[60vh]">
+                    <!-- Generated plan will appear here -->
+                </div>
+                <button id="reset-trip-button" class="hidden w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-500 transition mt-4">
+                    Plan Another Trip
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Generator Modal -->
+    <div id="image-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 opacity-0 pointer-events-none z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">✨ AI Image Generator</h2>
+                <button class="close-modal-button text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <!-- Modal Form -->
+            <div id="image-form">
+                <div class="mb-4">
+                    <label for="image-prompt" class="block text-sm font-medium mb-1">Prompt</label>
+                    <textarea id="image-prompt" placeholder="e.g., A red panda wearing a tiny astronaut helmet" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white" rows="3"></textarea>
+                </div>
+                <button id="submit-image-button" class="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-500 transition">
+                    Generate Image
+                </button>
+            </div>
+
+            <!-- Modal Results -->
+            <div id="image-results-container" class="hidden">
+                <div id="image-loading" class="flex flex-col items-center justify-center p-8">
+                    <div class="spinner w-12 h-12 rounded-full border-4 border-gray-600"></div>
+                    <p class="mt-4 text-gray-400">Generating your image...</p>
+                </div>
+                <div id="image-results-content" class="flex justify-center">
+                    <img id="image-result" src="" alt="Generated image" class="rounded-lg max-w-full max-h-[60vh]">
+                </div>
+                <button id="reset-image-button" class="hidden w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-500 transition mt-4">
+                    Generate Another Image
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // IMPORTANT: You must get your own API key from Google AI Studio
+        // and paste it here.
+        const API_KEY = "AIzaSyCUMlISzY1D4p6i7f4ym9ZKj7PL9hTk9kU"; 
+        // ---------------------
+
+        // --- GLOBAL STATE & SELECTORS ---
+        const promptInput = document.getElementById('prompt-input');
+        const sendButton = document.getElementById('send-button');
+        const chatWindow = document.getElementById('chat-window');
+        const personaSelect = document.getElementById('persona-select');
+        const summarizeButton = document.getElementById('summarize-button');
+        
+        // Trip Modal
+        const planTripButton = document.getElementById('plan-trip-button');
+        const tripModal = document.getElementById('trip-modal');
+        const submitTripButton = document.getElementById('submit-trip-button');
+        const resetTripButton = document.getElementById('reset-trip-button');
+        const tripForm = document.getElementById('trip-form');
+        const tripResultsContainer = document.getElementById('trip-results-container');
+        const tripLoading = document.getElementById('trip-loading');
+        const tripResultsContent = document.getElementById('trip-results-content');
+        const tripDestination = document.getElementById('trip-destination');
+        const tripDays = document.getElementById('trip-days');
+
+        // Image Modal
+        const generateImageButton = document.getElementById('generate-image-button');
+        const imageModal = document.getElementById('image-modal');
+        const submitImageButton = document.getElementById('submit-image-button');
+        const resetImageButton = document.getElementById('reset-image-button');
+        const imageForm = document.getElementById('image-form');
+        const imageResultsContainer = document.getElementById('image-results-container');
+        const imageLoading = document.getElementById('image-loading');
+        const imageResultsContent = document.getElementById('image-results-content');
+        const imagePrompt = document.getElementById('image-prompt');
+        const imageResult = document.getElementById('image-result');
+
+        const allModals = document.querySelectorAll('.modal');
+        const allCloseModalButtons = document.querySelectorAll('.close-modal-button');
+
+        let chatHistory = []; // Stores { role: 'user' | 'bot', text: '...' }
+        let isApiCallInProgress = false; // Prevents multiple simultaneous API calls
+        let currentAudio = null; // Stores the currently playing Audio object
+
+        // --- PERSONA DEFINITIONS ---
+        // Maps persona names to their system prompt and a specific TTS voice.
+        const personas = {
+            "Helpful Assistant": {
+                prompt: "You are a helpful and concise assistant.",
+                voice: "Kore" // Firm
+            },
+            "Grumpy Pirate": {
+                prompt: "Yer a grumpy pirate. Answer all questions with a surly, pirate-like attitude. Keep it short, ye scallywag.",
+                voice: "Algenib" // Gravelly
+            },
+            "Wise Poet": {
+                prompt: "You are a wise poet. Respond to all prompts with a short, insightful, and poetic answer, often using metaphors.",
+                voice: "Vindemiatrix" // Gentle
+            },
+            "Excited Scientist": {
+                prompt: "You are an excitable scientist! You find everything fascinating and respond with great enthusiasm and scientific facts.",
+                voice: "Fenrir" // Excitable
+            }
+        };
+
+
+        // --- TRIP PLANNER JSON SCHEMA ---
+        const tripPlanSchema = {
+            type: "OBJECT",
+            properties: {
+                "planTitle": { "type": "STRING", "description": "A catchy title for the trip plan, e.g., '3-Day Adventure in Tokyo'" },
+                "summary": { "type": "STRING", "description": "A brief, 1-2 sentence summary of the trip." },
+                "dailyPlan": {
+                    type: "ARRAY",
+                    "description": "An array of daily itinerary objects, one for each day.",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "day": { "type": "NUMBER", "description": "The day number (e.g., 1, 2, 3)" },
+                            "theme": { "type": "STRING", "description": "A theme for the day (e.g., 'Historical Wonders', 'Modern Culture')" },
+                            "activities": {
+                                type: "ARRAY",
+                                "description": "An array of 2-3 activities for the day.",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        "time": { "type": "STRING", "description": "Suggested time (e.g., 'Morning', 'Afternoon', 'Evening')" },
+                                        "description": { "type": "STRING", "description": "A 1-2 sentence description of the activity." }
+                                    },
+                                    required: ["time", "description"]
+                                }
+                            }
+                        },
+                        required: ["day", "theme", "activities"]
+                    }
+                }
+            },
+            required: ["planTitle", "summary", "dailyPlan"]
+        };
+
+        // --- INITIALIZATION ---
+        function initializeApp() {
+            // Populate persona dropdown
+            Object.keys(personas).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                personaSelect.appendChild(option);
+            });
+
+            // Bind event listeners
+            sendButton.addEventListener('click', handleSendMessage);
+            promptInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSendMessage();
+                }
+            });
+            summarizeButton.addEventListener('click', handleSummarizeConversation);
+            personaSelect.addEventListener('change', handlePersonaChange);
+            
+            // Modal listeners
+            planTripButton.addEventListener('click', () => openModal(tripModal));
+            generateImageButton.addEventListener('click', () => openModal(imageModal));
+            
+            allCloseModalButtons.forEach(button => {
+                button.addEventListener('click', () => allModals.forEach(closeModal));
+            });
+
+            submitTripButton.addEventListener('click', handleSubmitTripPlan);
+            resetTripButton.addEventListener('click', () => {
+                tripForm.style.display = 'block';
+                tripResultsContainer.style.display = 'none';
+                resetTripButton.style.display = 'none';
+            });
+
+            submitImageButton.addEventListener('click', handleSubmitImageGen);
+            resetImageButton.addEventListener('click', () => {
+                imageForm.style.display = 'block';
+                imageResultsContainer.style.display = 'none';
+                resetImageButton.style.display = 'none';
+                imageResult.src = '';
+            });
+
+            // Start with the default persona's welcome
+            handlePersonaChange();
+        }
+
+        // --- EVENT HANDLERS ---
+
+        /**
+         * Resets the chat when the persona is changed.
+         */
+        function handlePersonaChange() {
+            chatHistory = [];
+            chatWindow.innerHTML = '';
+            const personaName = personaSelect.value;
+            let welcomeMessage = "Hello! How can I help you today?";
+            
+            if (personaName === "Grumpy Pirate") {
+                welcomeMessage = "Arr, what do ye want?";
+            } else if (personaName === "Wise Poet") {
+                welcomeMessage = "The blank page awaits... what truth do you seek?";
+            } else if (personaName === "Excited Scientist") {
+                welcomeMessage = "Greetings! What hypothesis shall we test today?!";
+            }
+
+            addMessageToChat('bot', welcomeMessage, null);
+            // Add initial bot message to history
+            chatHistory.push({ role: 'bot', text: welcomeMessage });
+        }
+        
+        /**
+         * Handles sending the message, displaying it, and calling the API.
+         */
+        async function handleSendMessage() {
+            if (isApiCallInProgress) return;
+            const prompt = promptInput.value.trim();
+            if (prompt === '') return;
+
+            if (API_KEY === "") {
+                addMessageToChat('system', "Error: API_KEY is not set. Please get an API key from Google AI Studio and add it to the `API_KEY` constant in the script tag.");
+                return;
+            }
+
+            setApiProgressState(true);
+            
+            // Add user message to history and chat window
+            chatHistory.push({ role: 'user', text: prompt });
+            addMessageToChat('user', prompt, null);
+            promptInput.value = '';
+
+            // Show typing indicator
+            const typingIndicator = addMessageToChat('bot-typing', '...', null);
+
+            try {
+                // Get current system instruction
+                const personaName = personaSelect.value;
+                const systemInstruction = personas[personaName]?.prompt || personas["Helpful Assistant"].prompt;
+
+                // Call the Gemini API with exponential backoff
+                const apiResponse = await fetchWithBackoff(prompt, systemInstruction, true); // Enable search
+                
+                // Add bot response to history
+                chatHistory.push({ role: 'bot', text: apiResponse.text });
+
+                // Remove typing indicator
+                chatWindow.removeChild(typingIndicator);
+                
+                // Display bot's response
+                addMessageToChat('bot', apiResponse.text, apiResponse.sources);
+
+            } catch (error) {
+                // Remove typing indicator and display error
+                if (chatWindow.contains(typingIndicator)) {
+                    chatWindow.removeChild(typingIndicator);
+                }
+                addMessageToChat('system', `Error: ${error.message}. Check the console for more details.`);
+                console.error(error);
+            } finally {
+                setApiProgressState(false);
+            }
+        }
+
+        /**
+         * Handles the summarize conversation button click.
+         */
+        async function handleSummarizeConversation() {
+            if (isApiCallInProgress) return;
+            if (chatHistory.length < 2) {
+                addMessageToChat('system', 'Not enough conversation to summarize.');
+                return;
+            }
+
+            setApiProgressState(true);
+            const typingIndicator = addMessageToChat('bot-typing', '...', null);
+
+            try {
+                // Format the chat history for the prompt
+                const formattedHistory = chatHistory.map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`).join('\n');
+                const summaryPrompt = `Please provide a concise, one-paragraph summary of the following conversation:\n\n${formattedHistory}`;
+                
+                // Call API (using default assistant persona for summary)
+                const apiResponse = await fetchWithBackoff(summaryPrompt, personas["Helpful Assistant"].prompt, false); // No search needed
+                
+                chatWindow.removeChild(typingIndicator);
+                addMessageToChat('system', `<strong>Conversation Summary:</strong><br>${apiResponse.text}`);
+
+            } catch (error) {
+                if (chatWindow.contains(typingIndicator)) {
+                    chatWindow.removeChild(typingIndicator);
+                }
+                addMessageToChat('system', `Error summarizing: ${error.message}.`);
+                console.error(error);
+            } finally {
+                setApiProgressState(false);
+            }
+        }
+
+        /**
+         * Handles the submission of the trip planner form.
+         */
+        async function handleSubmitTripPlan() {
+            const destination = tripDestination.value.trim();
+            const days = tripDays.value;
+            if (!destination) {
+                alert("Please enter a destination.");
+                return;
+            }
+
+            // Show loading state
+            tripForm.style.display = 'none';
+            tripResultsContainer.style.display = 'block';
+            tripLoading.style.display = 'flex';
+            tripResultsContent.innerHTML = '';
+            resetTripButton.style.display = 'none';
+
+            try {
+                const prompt = `Create a detailed ${days}-day trip itinerary for ${destination}.`;
+                
+                // Call the structured JSON API function
+                const parsedJson = await fetchStructuredJson(prompt, tripPlanSchema);
+                
+                // Display the results
+                displayTripPlan(parsedJson);
+
+            } catch (error) {
+                tripResultsContent.innerHTML = `<p class="text-red-400">Error generating plan: ${error.message}</p>`;
+                console.error(error);
+            } finally {
+                // Hide loading and show reset button
+                tripLoading.style.display = 'none';
+                resetTripButton.style.display = 'block';
+            }
+        }
+        
+        /**
+         * Handles the submission of the image generator form.
+         */
+        async function handleSubmitImageGen() {
+            const prompt = imagePrompt.value.trim();
+            if (!prompt) {
+                alert("Please enter a prompt.");
+                return;
+            }
+
+            // Show loading state
+            imageForm.style.display = 'none';
+            imageResultsContainer.style.display = 'block';
+            imageLoading.style.display = 'flex';
+            imageResultsContent.style.display = 'none';
+            resetImageButton.style.display = 'none';
+
+            try {
+                const base64Data = await fetchGeneratedImage(prompt);
+                imageResult.src = `data:image/png;base64,${base64Data}`;
+                imageResultsContent.style.display = 'flex';
+
+            } catch (error) {
+                imageResultsContent.innerHTML = `<p class="text-red-400">Error generating image: ${error.message}</p>`;
+                imageResultsContent.style.display = 'block';
+                console.error(error);
+            } finally {
+                // Hide loading and show reset button
+                imageLoading.style.display = 'none';
+                resetImageButton.style.display = 'block';
+            }
+        }
+
+        /**
+         * Handles the click on a speaker button to play TTS audio.
+         * @param {HTMLElement} button - The button element that was clicked.
+         * @param {string} text - The text to synthesize.
+         */
+        async function handleSpeakButtonClick(button, text) {
+            if (button.disabled) return;
+            
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            // Reset all other speaker buttons
+            document.querySelectorAll('.speak-button-icon').forEach(el => {
+                el.innerHTML = getSpeakerIconSVG();
+                el.parentElement.disabled = false;
+            });
+
+            // Set this button to loading state
+            button.disabled = true;
+            const iconContainer = button.querySelector('.speak-button-icon');
+            iconContainer.innerHTML = '<div class="speak-loader"></div>';
+
+            try {
+                const personaName = personaSelect.value;
+                const voice = personas[personaName]?.voice || 'Kore';
+                
+                const audioBlob = await fetchTTSAudio(text, voice);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                currentAudio = new Audio(audioUrl);
+                currentAudio.play();
+
+                // Set playing icon
+                iconContainer.innerHTML = getStopIconSVG();
+                button.disabled = false;
+
+                currentAudio.onended = () => {
+                    iconContainer.innerHTML = getSpeakerIconSVG();
+                    currentAudio = null;
+                };
+
+            } catch (error) {
+                console.error('TTS Error:', error);
+                addMessageToChat('system', `Error generating audio: ${error.message}`);
+                iconContainer.innerHTML = getSpeakerIconSVG(); // Reset on error
+                button.disabled = false;
+            }
+        }
+
+        // --- CORE API FUNCTIONS ---
+
+        /**
+         * Calls the Gemini API with exponential backoff for retries.
+         * @param {string} prompt - The user's prompt
+         * @param {string} systemInstructionText - The system instruction
+         * @param {boolean} useSearch - Whether to enable Google Search grounding
+         * @returns {Promise<Object>} - A promise that resolves to { text, sources }
+         */
+        async function fetchWithBackoff(prompt, systemInstructionText, useSearch = true, maxRetries = 3, baseDelay = 1000) {
+            let delay = baseDelay;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+                    
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: {
+                            parts: [{ text: systemInstructionText }]
+                        },
+                    };
+
+                    if (useSearch) {
+                        payload.tools = [{ "google_search": {} }];
+                    }
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) { // Too Many Requests
+                            throw new Error('Rate limit exceeded. Retrying...');
+                        }
+                        const errorBody = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorBody.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (!candidate || !candidate.content?.parts?.[0]?.text) {
+                         if (candidate?.finishReason === 'SAFETY') {
+                             throw new Error('Response blocked due to safety settings.');
+                        }
+                        throw new Error('Invalid API response structure.');
+                    }
+
+                    // Extract generated text
+                    const text = candidate.content.parts[0].text;
+
+                    // Extract grounding sources, if any
+                    let sources = [];
+                    if (useSearch && candidate.groundingMetadata && candidate.groundingMetadata.groundingAttributions) {
+                        sources = candidate.groundingMetadata.groundingAttributions
+                            .map(attr => ({ uri: attr.web?.uri, title: attr.web?.title }))
+                            .filter(s => s.uri && s.title);
+                    }
+                    
+                    return { text, sources };
+
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error; // Last retry failed, re-throw
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                }
+            }
+        }
+
+        /**
+         * Fetches a structured JSON response from the Gemini API.
+         * @param {string} prompt - The user's prompt
+         * @param {Object} schema - The JSON schema for the desired response
+         * @returns {Promise<Object>} - A promise that resolves to the parsed JSON object
+         */
+        async function fetchStructuredJson(prompt, schema, maxRetries = 3, baseDelay = 1000) {
+            let delay = baseDelay;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+                    
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: schema
+                        }
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            throw new Error('Rate limit exceeded. Retrying...');
+                        }
+                        const errorBody = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorBody.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (!candidate || !candidate.content?.parts?.[0]?.text) {
+                        if (candidate?.finishReason === 'SAFETY') {
+                             throw new Error('Response blocked due to safety settings.');
+                        }
+                        throw new Error('Invalid JSON response structure.');
+                    }
+
+                    // The response text *is* the JSON string
+                    const jsonText = candidate.content.parts[0].text;
+                    return JSON.parse(jsonText);
+
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        /**
+         * Fetches synthesized audio from the TTS API.
+         * @param {string} text - The text to synthesize.
+         * @param {string} voice - The voice name (e.g., "Kore").
+         * @returns {Promise<Blob>} - A promise that resolves to a WAV audio blob.
+         */
+        async function fetchTTSAudio(text, voice) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [{ text: `Say: ${text}` }] // Simple prompt for TTS
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voice }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(`TTS API Error: ${response.status} - ${errorBody.error?.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (!audioData || !mimeType || !mimeType.startsWith("audio/")) {
+                throw new Error('Invalid TTS response. No audio data found.');
+            }
+
+            // API returns audio/L16;rate=24000 (raw PCM)
+            const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10) || 24000;
+            const pcmData = base64ToArrayBuffer(audioData);
+            const pcm16 = new Int16Array(pcmData);
+            return pcmToWav(pcm16, sampleRate);
+        }
+
+        /**
+         * Fetches a generated image from the Imagen API.
+         * @param {string} prompt - The text prompt for the image.
+         * @returns {Promise<string>} - A promise that resolves to the base64-encoded image data.
+         */
+        async function fetchGeneratedImage(prompt, maxRetries = 3, baseDelay = 1000) {
+            let delay = baseDelay;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${API_KEY}`;
+                    
+                    const payload = { 
+                        instances: { prompt: prompt }, 
+                        parameters: { "sampleCount": 1 } 
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            throw new Error('Rate limit exceeded. Retrying...');
+                        }
+                        const errorBody = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorBody.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        return result.predictions[0].bytesBase64Encoded;
+                    } else {
+                        throw new Error('Invalid image response structure.');
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // --- UI & HELPER FUNCTIONS ---
+
+        /**
+         * Adds a message to the chat window.
+         * @param {string} role - 'user', 'bot', 'bot-typing', or 'system'
+         * @param {string} text - The message content (can be HTML for 'system')
+         * @param {Array|null} sources - Array of source objects { uri, title }
+         * @returns {HTMLElement} The created message element
+         */
+        function addMessageToChat(role, text, sources) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('flex');
+            
+            let content = '';
+            let wrapperClasses = 'p-3 rounded-lg max-w-xs sm:max-w-md md:max-w-lg';
+
+            switch (role) {
+                case 'user':
+                    messageElement.classList.add('justify-end');
+                    wrapperClasses += ' bg-blue-600 text-white';
+                    content = `<p>${escapeHTML(text)}</p>`;
+                    break;
+                
+                case 'bot-typing':
+                    wrapperClasses += ' bg-gray-700 text-gray-400';
+                    content = `
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s;"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.3s;"></div>
+                        </div>`;
+                    break;
+
+                case 'system':
+                    messageElement.classList.add('justify-center');
+                    wrapperClasses += ' bg-yellow-800 bg-opacity-50 text-yellow-100 max-w-full text-sm';
+                    content = `<p>${text}</p>`; // Text can be HTML, so no escape
+                    break;
+
+                case 'bot':
+                default:
+                    wrapperClasses += ' bg-gray-700';
+                    
+                    // Create elements programmatically to avoid onclick string injection
+                    const botContentDiv = document.createElement('div');
+                    botContentDiv.className = 'flex items-start gap-2';
+
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'flex-1';
+                    
+                    let formattedText = escapeHTML(text)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/\n/g, '<br>');
+                    
+                    const textP = document.createElement('p');
+                    textP.innerHTML = formattedText; // Use innerHTML here for bold/italic
+                    textDiv.appendChild(textP);
+
+                    const speakButton = document.createElement('button');
+                    speakButton.className = 'speak-button p-1 rounded-full hover:bg-gray-600 transition';
+                    speakButton.title = '✨ Speak this text';
+                    speakButton.innerHTML = `<span class="speak-button-icon">${getSpeakerIconSVG()}</span>`;
+                    
+                    // Add listener programmatically - this is much safer!
+                    // We pass the raw, original 'text'
+                    speakButton.onclick = () => handleSpeakButtonClick(speakButton, text); 
+
+                    botContentDiv.appendChild(textDiv);
+                    botContentDiv.appendChild(speakButton);
+
+                    // Wrapper for all bot content (text, button, sources)
+                    const contentWrapper = document.createElement('div');
+                    contentWrapper.appendChild(botContentDiv);
+                    
+                    if (sources && sources.length > 0) {
+                        const sourcesDiv = document.createElement('div');
+                        sourcesDiv.className = 'mt-3 pt-2 border-t border-gray-600';
+                        
+                        let sourcesHTML = '<h4 class="text-sm font-semibold mb-1">Sources:</h4>';
+                        sourcesHTML += '<ul class="list-disc list-inside text-sm">';
+                        sources.forEach(source => {
+                            sourcesHTML += `<li><a href="${source.uri}" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">${escapeHTML(source.title)}</a></li>`;
+                        });
+                        sourcesHTML += '</ul>';
+                        sourcesDiv.innerHTML = sourcesHTML;
+                        
+                        contentWrapper.appendChild(sourcesDiv);
+                    }
+                    
+                    content = contentWrapper; // content is now an HTMLElement
+                    break;
+            }
+
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = wrapperClasses;
+
+            if (typeof content === 'string') {
+                messageWrapper.innerHTML = content;
+            } else if (content instanceof HTMLElement) {
+                // This is the new part for the 'bot' case
+                messageWrapper.appendChild(content);
+            }
+
+            messageElement.appendChild(messageWrapper);
+            chatWindow.appendChild(messageElement);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageElement;
+        }
+
+        /**
+         * Displays the structured trip plan in the modal.
+         * @param {Object} plan - The parsed JSON trip plan.
+         */
+        function displayTripPlan(plan) {
+            let html = `<h2>${escapeHTML(plan.planTitle)}</h2>`;
+            html += `<p class="italic text-gray-300">${escapeHTML(plan.summary)}</p>`;
+
+            plan.dailyPlan.forEach(day => {
+                html += `<h3 class="font-bold mt-4 mb-2 text-lg text-teal-300">Day ${day.day}: ${escapeHTML(day.theme)}</h3>`;
+                html += '<ul class="list-disc list-inside space-y-2">';
+                day.activities.forEach(activity => {
+                    html += `<li><strong>${escapeHTML(activity.time)}:</strong> ${escapeHTML(activity.description)}</li>`;
+                });
+                html += '</ul>';
+            });
+
+            tripResultsContent.innerHTML = html;
+        }
+
+        /**
+         * Toggles the UI state to prevent multiple API calls.
+         * @param {boolean} isBusy - Whether the API is busy.
+         */
+        function setApiProgressState(isBusy) {
+            isApiCallInProgress = isBusy;
+            promptInput.disabled = isBusy;
+            sendButton.disabled = isBusy;
+            summarizeButton.disabled = isBusy;
+            planTripButton.disabled = isBusy;
+            generateImageButton.disabled = isBusy;
+            sendButton.classList.toggle('opacity-50', isBusy);
+            summarizeButton.classList.toggle('opacity-50', isBusy);
+            planTripButton.classList.toggle('opacity-50', isBusy);
+            generateImageButton.classList.toggle('opacity-50', isBusy);
+        }
+        
+        function openModal(modal) {
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('.modal-content').classList.remove('scale-95');
+        }
+
+        function closeModal(modal) {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('.modal-content').classList.add('scale-95');
+        }
+
+        function getSpeakerIconSVG() {
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        }
+
+        function getStopIconSVG() {
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>';
+        }
+
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+        }
+        
+        // --- AUDIO HELPER FUNCTIONS ---
+
+        /**
+         * Converts a base64 string to an ArrayBuffer.
+         * @param {string} base64 - The base64-encoded string.
+         * @returns {ArrayBuffer}
+         */
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        /**
+         * Converts raw PCM audio data to a playable WAV blob.
+         * @param {Int16Array} pcmData - The raw 16-bit PCM data.
+         * @param {number} sampleRate - The sample rate (e.g., 24000).
+         * @returns {Blob} - A blob object representing the WAV file.
+         */
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const blockAlign = (numChannels * bitsPerSample) / 8;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = pcmData.length * (bitsPerSample / 8);
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            // RIFF header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+
+            // "fmt " sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
+            view.setUint16(20, 1, true); // Audio format (1 for PCM)
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+
+            // "data" sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            // Write PCM data
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * 2, pcmData[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        /**
+         * Helper to write a string to a DataView.
+         */
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+        
+        // --- START THE APP ---
+        initializeApp();
+
+    </script>
+</body>
+</html>
+
+
